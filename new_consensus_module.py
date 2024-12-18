@@ -347,7 +347,7 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
         new_block['Header']['hash'] = encryption_module.hashing_function(new_block['Body'])
     if type_of_consensus == 4:
         new_block['Header']['PoET'] = ''
-    if type_of_consensus == 5:
+    if type_of_consensus == 6:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
     return new_block
 
