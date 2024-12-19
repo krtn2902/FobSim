@@ -9,6 +9,7 @@ import time
 import PoET_server
 import AIModule
 import copy
+import math
 
 # NON-MODIFIABLE PART:
 
@@ -312,7 +313,8 @@ blockchain_CAs = {'1': 'Proof of Work (PoW)',
                   '3': 'Proof of Authority (PoA)',
                   '4': 'Proof of Elapsed Time (PoET)',
                   '5': 'Delegated Proof of Stake (DPoS)',
-                  '6': 'Example New CA'}
+                  '6': 'Example New CA',
+                  '7': 'Two-Round Leader Selection (2PR)'}
 
 # 2-if your consensus algorithm requires other files to refer to while miners are
 # processing TXs and Blocks, add them to the
@@ -349,6 +351,8 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
         new_block['Header']['PoET'] = ''
     if type_of_consensus == 6:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
+    # if type_of_consensus == 7:
+    #     new_block['Header']['twoPR'] = dummy_proof_generator_function(new_block)
     return new_block
 
 # 4- the 'miners_trigger' function triggers the miners to start mining/minting new blocks.
@@ -371,6 +375,14 @@ def miners_trigger(the_miners_list, the_type_of_consensus, expected_chain_length
         trigger_dpos_miners(expected_chain_length, the_miners_list, number_of_DPoS_delegates, numOfTXperBlock, the_type_of_consensus, blockchainFunction, Parallel_PoW_mining)
     if the_type_of_consensus == 6:
         trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length)
+    if the_type_of_consensus == 7:
+        # random reputation scores to simulate random winners
+
+        reputationScores = [random.randint(0, 10) for _ in range(len(the_miners_list))]
+        print("-------------\nReputation Scores\n-------------")
+        print(reputationScores)
+
+        trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length, reputationScores)
 
 # 5- Add miner selection strategy here in a trigger_miners function as follows. The Selection strategy can be
 # randomized (as non-parallel PoW), conditioned (as PoS), parallel-randomized (as PoW), FCFS (as PoA), etc.
@@ -387,6 +399,37 @@ def trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus
             counter += 1
     output.simulation_progress(counter, expected_chain_length)
 
+def trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length, reputationScores):
+
+    number_of_miners = len(the_miners_list)
+    curSeed = abs(math.log2(number_of_miners)) + 1
+    random.seed(curSeed)
+    # random.randint(0, 10)
+    # Round 1
+    winning_miners = []
+    maxScore = 0
+    maxIndex = 0
+    
+    generated_numbers = [random.randint(0, 10) for _ in range(number_of_miners)]
+    Average = sum(generated_numbers) // number_of_miners
+    guessAverage = [random.randint(0, 10) for _ in range(number_of_miners)]
+
+    print("--------------\nAverages\n--------------")
+    print(Average)
+    print(guessAverage)
+    for i in range(number_of_miners):
+        if guessAverage[i] == Average:
+            if generated_numbers[i] + reputationScores[i] > maxScore:
+                maxScore = generated_numbers[i] + reputationScores[i]
+                maxIndex = i         
+
+    winning_miners.append(the_miners_list[maxIndex])
+    for counter in range(expected_chain_length):
+        for obj in winning_miners:
+            if obj.local_mempool:
+                obj.build_block(numOfTXperBlock, the_miners_list, the_type_of_consensus, blockchainFunction, expected_chain_length, None)
+                counter += 1
+        output.simulation_progress(counter, expected_chain_length)
 
 # 6- the 'block_is_valid' function is used by the miners to validate data within the received blocks.
 # add an IF statement to this function so that the simulator would know the validation function to refer to:
