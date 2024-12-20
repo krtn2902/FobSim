@@ -351,8 +351,8 @@ def generate_new_block(transactions, generator_id, previous_hash, type_of_consen
         new_block['Header']['PoET'] = ''
     if type_of_consensus == 6:
         new_block['Header']['dummy_new_proof'] = dummy_proof_generator_function(new_block)
-    # if type_of_consensus == 7:
-    #     new_block['Header']['twoPR'] = dummy_proof_generator_function(new_block)
+    if type_of_consensus == 7:
+        new_block['Header']['twoPR_proof'] = dummy_proof_generator_function(new_block)
     return new_block
 
 # 4- the 'miners_trigger' function triggers the miners to start mining/minting new blocks.
@@ -400,36 +400,48 @@ def trigger_dummy_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus
     output.simulation_progress(counter, expected_chain_length)
 
 def trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus, blockchainFunction, expected_chain_length, reputationScores):
-
-    number_of_miners = len(the_miners_list)
-    curSeed = abs(math.log2(number_of_miners)) + 1
-    random.seed(curSeed)
-    # random.randint(0, 10)
-    # Round 1
-    winning_miners = []
-    maxScore = 0
-    maxIndex = 0
-    
-    generated_numbers = [random.randint(0, 10) for _ in range(number_of_miners)]
-    Average = sum(generated_numbers) // number_of_miners
-    guessAverage = [random.randint(0, 10) for _ in range(number_of_miners)]
-
-    print("--------------\nAverages\n--------------")
-    print(Average)
-    print(guessAverage)
-    for i in range(number_of_miners):
-        if guessAverage[i] == Average:
-            if generated_numbers[i] + reputationScores[i] > maxScore:
-                maxScore = generated_numbers[i] + reputationScores[i]
-                maxIndex = i         
-
-    winning_miners.append(the_miners_list[maxIndex])
+   
+    round = 0
     for counter in range(expected_chain_length):
+
+        number_of_miners = len(the_miners_list)
+        if round!=0:
+            number_of_miners-=1
+        curSeed = abs(math.log2(number_of_miners)) + 1
+        random.seed(curSeed)
+        # random.randint(0, 10)
+        # Round 1
+        winning_miners = []
+        maxScore = 0
+        maxIndex = 0
+        
+        generated_numbers = [random.randint(0, 10) for _ in range(number_of_miners)]
+        Average = sum(generated_numbers) // number_of_miners
+        guessAverage = [random.randint(0, 10) for _ in range(number_of_miners)]
+        print('--------------\nGenerated Numbers\n--------------')
+        print(generated_numbers)
+        print("--------------\nAverages\n--------------")
+        print('Actual Average:', Average)
+        print('Guessed Average: ', guessAverage)
+
+        prevWinner = 0
+
+        for i in range(number_of_miners):
+            if i==prevWinner:
+                continue
+            if guessAverage[i] == Average:
+                if generated_numbers[i] + reputationScores[i] > maxScore:
+                    maxScore = generated_numbers[i] + reputationScores[i]
+                    maxIndex = i         
+
+        winning_miners.append(the_miners_list[maxIndex])
         for obj in winning_miners:
             if obj.local_mempool:
                 obj.build_block(numOfTXperBlock, the_miners_list, the_type_of_consensus, blockchainFunction, expected_chain_length, None)
                 counter += 1
         output.simulation_progress(counter, expected_chain_length)
+        prevWinner = maxIndex
+        round+=1
 
 # 6- the 'block_is_valid' function is used by the miners to validate data within the received blocks.
 # add an IF statement to this function so that the simulator would know the validation function to refer to:
@@ -447,6 +459,8 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
         return dpos_block_is_valid(new_block, delegates, top_block['Header']['hash'])
     if type_of_consensus == 6:
         return dummy_block_is_valid(new_block)
+    if type_of_consensus == 7:
+        return twoPR_block_is_valid(new_block)
 
 
 # 7- Add miner validation strategy in a 'block_is_valid' function (must match the name specified
@@ -460,6 +474,8 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
 
 def dummy_block_is_valid(block):
     return block['Header']['dummy_new_proof'] == encryption_module.hashing_function(block['Body'])
+def twoPR_block_is_valid(block):
+    return block['Header']['twoPR_proof'] == encryption_module.hashing_function(block['Body'])
 
 # 8- Add other type of proof that could be validated by the 'block_is_valid' function.
 # To do that, you can implement a function that generates the proof as in the
@@ -468,4 +484,6 @@ def dummy_block_is_valid(block):
 
 
 def dummy_proof_generator_function(block):
+    return encryption_module.hashing_function(block['Body'])
+def twoPR_proof_generator_function(block):
     return encryption_module.hashing_function(block['Body'])
