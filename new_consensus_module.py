@@ -415,9 +415,10 @@ def trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus
         maxScore = 0
         maxIndex = 0
         
+        # Generate random numbers for each miner
         generated_numbers = [random.randint(0, 10) for _ in range(number_of_miners)]
-        Average = sum(generated_numbers) // number_of_miners
-        guessAverage = [random.randint(0, 10) for _ in range(number_of_miners)]
+        Average = sum(generated_numbers) // number_of_miners # Actual average
+        guessAverage = [random.randint(0, 10) for _ in range(number_of_miners)] # Calculated average
         print('--------------\nGenerated Numbers\n--------------')
         print(generated_numbers)
         print("--------------\nAverages\n--------------")
@@ -425,7 +426,8 @@ def trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus
         print('Guessed Average: ', guessAverage)
 
         prevWinner = 0
-
+        
+        # Find the miner with the highest score
         for i in range(number_of_miners):
             if i==prevWinner:
                 continue
@@ -433,8 +435,12 @@ def trigger_twoPR_miners(the_miners_list, numOfTXperBlock, the_type_of_consensus
                 if generated_numbers[i] + reputationScores[i] > maxScore:
                     maxScore = generated_numbers[i] + reputationScores[i]
                     maxIndex = i         
-
+        if len(winning_miners)==0:
+            print("\nNO WINNER\n")
         winning_miners.append(the_miners_list[maxIndex])
+
+        # increment the scores for winning miner
+        reputationScores[maxIndex]+=1
         for obj in winning_miners:
             if obj.local_mempool:
                 obj.build_block(numOfTXperBlock, the_miners_list, the_type_of_consensus, blockchainFunction, expected_chain_length, None)
@@ -460,7 +466,8 @@ def block_is_valid(type_of_consensus, new_block, top_block, next_pos_block_from,
     if type_of_consensus == 6:
         return dummy_block_is_valid(new_block)
     if type_of_consensus == 7:
-        return twoPR_block_is_valid(new_block)
+        validators = []
+        return twoPR_block_is_valid(new_block, validators)
 
 
 # 7- Add miner validation strategy in a 'block_is_valid' function (must match the name specified
